@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FFXIV P8S - High Concept 1 Simulator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>High Concept 1 Simulator</h1>
+            <p class="subtitle">P8S (Hephaistos Savage) - Practice Tool</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Control Panel -->
+            <div class="control-panel">
+                <h2>Controls</h2>
+                <button id="resetBtn" class="btn btn-primary">Reset & Randomize</button>
+                <button id="checkBtn" class="btn btn-success">Check Solution</button>
+                <button id="hintsBtn" class="btn btn-info">Toggle Hints</button>
+                <button id="tutorialBtn" class="btn btn-secondary">Show Tutorial</button>
+                
+                <div class="phase-indicator">
+                    <h3>Current Phase: <span id="currentPhase">Setup</span></h3>
+                    <button id="nextPhaseBtn" class="btn btn-small">Next Phase</button>
+                </div>
+
+                <div class="feedback" id="feedback"></div>
+            </div>
+
+            <!-- Arena -->
+            <div class="arena-container">
+                <div class="arena" id="arena">
+                    <!-- FFXIV Waymarkers - Matching P8S HC1 layout -->
+                    <div class="waymarker corner-a">A</div>
+                    <div class="waymarker corner-b">B</div>
+                    <div class="waymarker corner-c">C</div>
+                    <div class="waymarker cardinal-2">2</div>
+                    <div class="waymarker cardinal-3">3</div>
+                    
+                    <!-- Direction labels -->
+                    <div class="direction-marker north">N</div>
+                    <div class="direction-marker east">E</div>
+                    <div class="direction-marker south">S</div>
+                    <div class="direction-marker west">W</div>
+                    
+                    <!-- Boss marker (outside arena, north) -->
+                    <div class="boss-marker">Hephaistos</div>
+                    
+                    <!-- Towers will be spawned dynamically -->
+                    <div id="towersContainer"></div>
+                    
+                    <!-- Players will be spawned here -->
+                    <div id="playersContainer"></div>
+                </div>
+                
+                <div class="hints-display" id="hintsDisplay" style="display: none;">
+                    <h3>Hints</h3>
+                    <ul id="hintsList"></ul>
+                </div>
+            </div>
+
+            <!-- Player List -->
+            <div class="player-list">
+                <h2>Players & Debuffs</h2>
+                <div id="playerListContent"></div>
+                
+                <div class="legend">
+                    <h3>Debuff Legend</h3>
+                    <div class="legend-item">
+                        <span class="debuff-icon alpha-short">α8</span> <strong>Short Alpha (8s):</strong> Go to A
+                    </div>
+                    <div class="legend-item">
+                        <span class="debuff-icon alpha-long">α26</span> <strong>Long Alpha (26s):</strong> Stack at 2
+                    </div>
+                    <div class="legend-item">
+                        <span class="debuff-icon beta-short">β8</span> <strong>Short Beta (8s):</strong> Go to B
+                    </div>
+                    <div class="legend-item">
+                        <span class="debuff-icon beta-long">β26</span> <strong>Long Beta (26s):</strong> Stack at 3
+                    </div>
+                    <div class="legend-item">
+                        <span class="debuff-icon gamma-short">γ8</span> <strong>Short Gamma (8s):</strong> Go to 4 (C)
+                    </div>
+                    <div class="legend-item">
+                        <span class="debuff-icon gamma-long">γ26</span> <strong>Long Gamma (26s):</strong> Stack at 3
+                    </div>
+                    <div class="legend-item">
+                        <span class="debuff-icon multisplice">M2</span> <strong>Multisplice:</strong> Go to 2 (2-stack)
+                    </div>
+                    <div class="legend-item">
+                        <span class="debuff-icon supersplice">S3</span> <strong>Supersplice:</strong> Go to 3 (3-stack)
+                    </div>
+                    <h4 style="color: #ffd700; margin-top: 15px; font-size: 1em;">Perfection Buffs</h4>
+                    <div class="legend-item" style="font-size: 0.85em;">
+                        🔥 <strong>Fire</strong> (Alpha) | ☠️ <strong>Poison</strong> (Beta) | 🌱 <strong>Plant</strong> (Gamma)
+                    </div>
+                    <div class="legend-item" style="font-size: 0.85em;">
+                        <strong>Fusion:</strong> 🔥+☠️=💨 | 🔥+🌱=💧 | ☠️+🌱=⚡
+                    </div>
+                    <h4 style="color: #ffd700; margin-top: 15px; font-size: 1em;">Conception Buffs</h4>
+                    <div class="legend-item" style="font-size: 0.85em;">
+                        💨 <strong>Winged</strong> (Wind) | 💧 <strong>Aquatic</strong> (Water) | ⚡ <strong>Shocking</strong> (Lightning)
+                    </div>
+                    <div class="legend-item" style="font-size: 0.85em;">
+                        Only players with matching Conception can soak towers!
+                    </div>
+                    <h4 style="color: #ffd700; margin-top: 15px; font-size: 1em;">Waymarkers</h4>
+                    <div class="legend-item" style="font-size: 0.85em;">
+                        <strong>A</strong> = NE | <strong>B</strong> = SE | <strong>C/4</strong> = SW | <strong>2</strong> = N Wall | <strong>3</strong> = W Wall
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tutorial Modal -->
+        <div id="tutorialModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>High Concept 1 - Tutorial</h2>
+                <div class="tutorial-content">
+                    <h3>Mechanic Overview</h3>
+                    <p>High Concept 1 is a complex positioning mechanic with multiple phases:</p>
+                    
+                    <h4>Debuff Assignment</h4>
+                    <ul>
+                        <li>Each player receives two debuffs that determine positioning</li>
+                        <li><strong>Imperfection: Alpha (2 players):</strong> 8 second timer - explodes first</li>
+                        <li><strong>Imperfection: Beta (2 players):</strong> 26 second timer - explodes last</li>
+                        <li><strong>Imperfection: Gamma (4 players):</strong> 17 second timer - explodes second</li>
+                        <li><strong>Near/Far World:</strong> 4 players get Near, 4 get Far</li>
+                    </ul>
+
+                    <h4>Phase 1: First Spread (Alpha Resolution)</h4>
+                    <ul>
+                        <li>All players spread to corners based on their debuffs</li>
+                        <li><strong>Alpha + Near:</strong> Spread to assigned corners (inner positions)</li>
+                        <li><strong>Alpha + Far:</strong> Spread to assigned corners (outer positions)</li>
+                        <li>Others spread to safe corners based on their Near/Far debuff</li>
+                        <li>When Alphas explode, they leave <strong>Perfection</strong> buffs at their locations</li>
+                    </ul>
+
+                    <h4>Phase 2: Gamma Resolution (Perfection Fusion)</h4>
+                    <ul>
+                        <li>Short debuffs (α8, β8, γ8) explode → Leave <strong>Perfection buffs</strong> at corners</li>
+                        <li>Long debuffs move to collect Perfection buffs (🔥 Fire, ☠️ Poison, 🌱 Plant)</li>
+                        <li><strong>FUSION STEP (Required!):</strong></li>
+                        <li>&nbsp;&nbsp;1. Two players with Perfection stand close together (anywhere on map)</li>
+                        <li>&nbsp;&nbsp;2. Click "Check Solution" to trigger fusion</li>
+                        <li>&nbsp;&nbsp;3. They create Conception buff based on their Perfection types</li>
+                        <li>2 towers spawn (North and South) with specific element</li>
+                        <li>The 2 players with Conception soak towers (element must match!)</li>
+                        <li><strong>Splicers:</strong> Stack with explosions to duplicate Perfection buffs</li>
+                    </ul>
+
+                    <h4>Phase 3: Second Spread & Towers</h4>
+                    <ul>
+                        <li><strong>Beta players</strong> collect Conception buffs from Gamma positions</li>
+                        <li>All players spread to corners again</li>
+                        <li>4 more towers spawn with colored requirements</li>
+                        <li>Players with matching Conception colors soak the correct colored towers</li>
+                    </ul>
+
+                    <h4>Key Mechanics: Perfection & Conception</h4>
+                    <ul>
+                        <li><strong>Perfection Buffs:</strong> Created when Imperfection debuffs explode</li>
+                        <li>&nbsp;&nbsp;• 🔥 Alpha Perfection: <strong>Fire</strong> (red, dominant), Water, Wind</li>
+                        <li>&nbsp;&nbsp;• ☠️ Beta Perfection: <strong>Poison</strong> (yellow, dominant), Lightning, Wind</li>
+                        <li>&nbsp;&nbsp;• 🌱 Gamma Perfection: <strong>Plant</strong> (orange, dominant), Lightning, Water</li>
+                        <li><strong>Conception Buffs:</strong> Created when two Perfections fuse</li>
+                        <li>&nbsp;&nbsp;• 🔥 Fire + ☠️ Poison = 💨 <strong>Winged</strong> (Green/Wind)</li>
+                        <li>&nbsp;&nbsp;• 🔥 Fire + 🌱 Plant = 💧 <strong>Aquatic</strong> (Blue/Water)</li>
+                        <li>&nbsp;&nbsp;• ☠️ Poison + 🌱 Plant = ⚡ <strong>Shocking</strong> (Purple/Lightning)</li>
+                        <li><strong>Tower Soaking:</strong> Must have matching Conception to soak tower</li>
+                        <li>&nbsp;&nbsp;• Wind tower requires Winged Conception</li>
+                        <li>&nbsp;&nbsp;• Water tower requires Aquatic Conception</li>
+                        <li>&nbsp;&nbsp;• Lightning tower requires Shocking Conception</li>
+                        <li><strong>⚠️ Wrong Conception = Instant death!</strong></li>
+                    </ul>
+
+                    <h3>How to Use This Simulator</h3>
+                    <ol>
+                        <li>Click "Reset & Randomize" to start with new random debuffs</li>
+                        <li>Review debuffs in the player list (right side)</li>
+                        <li>Drag player tokens to solve the current phase</li>
+                        <li>Click "Check Solution" to validate your positioning</li>
+                        <li>Once correct, "Next Phase" button unlocks</li>
+                        <li>Click "Next Phase" to advance to the next mechanic</li>
+                        <li>Use "Toggle Hints" for positioning guidance anytime</li>
+                    </ol>
+
+                    <h3>Resources</h3>
+                    <ul>
+                        <li><a href="https://www.icy-veins.com/ffxiv/the-eighth-circle-phase-2-savage-raid-guide#phase-2-high-concept-1" target="_blank">Icy Veins Guide</a></li>
+                        <li><a href="https://finalfantasy.fandom.com/wiki/Abyssos:_The_Eighth_Circle#High_Concept_1" target="_blank">FFXIV Wiki</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
