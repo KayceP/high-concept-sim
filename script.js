@@ -516,26 +516,37 @@ function nextPhase() {
         
         // Apply phase-specific changes
         if (gameState.phase === 1) {
-            // Phase 2: Short debuffs explode, create Perfection buffs
-            // Players with short debuffs leave Perfection at their positions
-            // Long debuffs need to collect these Perfections and fuse them
+            // Phase 1 (Gamma Resolution): Short debuffs exploded in Phase 0
+            // They now have Perfection buffs matching their debuff type
             
-            // Assign Perfection types to long debuff players
-            // In reality, players collect these by moving to explosion locations
-            const longDebuffPlayers = gameState.players.filter(p => isLongDebuff(p.debuffs[0]));
+            // Find short debuff players and assign their Perfection types
+            const shortAlpha = gameState.players.find(p => p.debuffs[0] === 'alpha-short');
+            const shortBeta = gameState.players.find(p => p.debuffs[0] === 'beta-short');
+            const shortGamma = gameState.players.find(p => p.debuffs[0] === 'gamma-short');
             
-            // Assign Perfection types based on which short debuff exploded
-            const perfectionTypes = ['alpha', 'beta', 'gamma'];
-            shuffle(perfectionTypes);
+            // Short Alpha gets Alpha Perfection (Fire)
+            if (shortAlpha) {
+                shortAlpha.perfectionType = 'alpha';
+                shortAlpha.needsFusion = true;
+                shortAlpha.hasFused = false;
+                shortAlpha.conceptionType = null;
+            }
             
-            longDebuffPlayers.forEach((player, idx) => {
-                if (idx < perfectionTypes.length) {
-                    player.perfectionType = perfectionTypes[idx];
-                    player.needsFusion = true; // They need to fuse to create Conception
-                    player.hasFused = false; // Ensure not marked as fused
-                    player.conceptionType = null; // Clear any old Conception
-                }
-            });
+            // Short Beta gets Beta Perfection (Poison)
+            if (shortBeta) {
+                shortBeta.perfectionType = 'beta';
+                shortBeta.needsFusion = true;
+                shortBeta.hasFused = false;
+                shortBeta.conceptionType = null;
+            }
+            
+            // Short Gamma gets Gamma Perfection (Plant)
+            if (shortGamma) {
+                shortGamma.perfectionType = 'gamma';
+                shortGamma.needsFusion = true;
+                shortGamma.hasFused = false;
+                shortGamma.conceptionType = null;
+            }
             
             // Note: Players do NOT get Conception yet - they need to fuse first!
             // Fusion happens when two players with Perfection stand close together
@@ -939,13 +950,13 @@ function validateSplicerPositioning(errors) {
     // Get tower soakers (players with Conception)
     const towerSoakers = gameState.players.filter(p => p.conceptionType);
     
-    // Get short debuff players
-    const shortAlphaPlayer = gameState.players.find(p => p.debuffs[0] === 'alpha-short');
-    const shortBetaPlayer = gameState.players.find(p => p.debuffs[0] === 'beta-short');
-    const shortGammaPlayer = gameState.players.find(p => p.debuffs[0] === 'gamma-short');
+    // Get long debuff players (they go to safe spots during splicer positioning)
+    const longAlphaPlayer = gameState.players.find(p => p.debuffs[0] === 'alpha-long');
+    const longBetaPlayer = gameState.players.find(p => p.debuffs[0] === 'beta-long');
+    const longGammaPlayer = gameState.players.find(p => p.debuffs[0] === 'gamma-long');
     
-    // Positions for short debuff players during splicer positioning
-    const shortDebuffPositions = {
+    // Positions for long debuff players during splicer positioning
+    const longDebuffPositions = {
         'alpha': { x: 450, y: 150, name: 'bottom-left of topmost right square' },
         'beta': { x: 450, y: 450, name: 'top-left of bottommost right square' },
         'gamma': { x: 150, y: 450, name: 'top-right of bottommost left square' }
@@ -967,15 +978,17 @@ function validateSplicerPositioning(errors) {
     const takenCorners = new Set();
     
     // Step 1: Unused Perfection player claims their original corner first
+    // (Short debuff players have Perfection, their original corner matches their type)
     let unusedPerfectionCorner = null;
     if (unusedPerfectionPlayer) {
         const debuff = unusedPerfectionPlayer.debuffs[0];
         
-        if (debuff === 'alpha-long') {
+        // Short debuff players go to their original corner
+        if (debuff === 'alpha-short') {
             unusedPerfectionCorner = 'A';
-        } else if (debuff === 'beta-long') {
+        } else if (debuff === 'beta-short') {
             unusedPerfectionCorner = 'B';
-        } else if (debuff === 'gamma-long') {
+        } else if (debuff === 'gamma-short') {
             unusedPerfectionCorner = 'C';
         }
         
@@ -1046,43 +1059,43 @@ function validateSplicerPositioning(errors) {
         }
     }
     
-    // Validate Short Alpha player position
-    if (shortAlphaPlayer) {
-        const correctPos = shortDebuffPositions['alpha'];
-        const playerEl = document.getElementById(`player-${shortAlphaPlayer.id}`);
+    // Validate Long Alpha player position
+    if (longAlphaPlayer) {
+        const correctPos = longDebuffPositions['alpha'];
+        const playerEl = document.getElementById(`player-${longAlphaPlayer.id}`);
         
-        if (getDistance(shortAlphaPlayer.position, correctPos) < 80) {
+        if (getDistance(longAlphaPlayer.position, correctPos) < 80) {
             playerEl.classList.add('correct');
         } else {
-            errors.push(`${shortAlphaPlayer.name} (Short Alpha) should be at ${correctPos.name}`);
+            errors.push(`${longAlphaPlayer.name} (Long Alpha) should be at ${correctPos.name}`);
             playerEl.classList.add('incorrect');
             isCorrect = false;
         }
     }
     
-    // Validate Short Beta player position
-    if (shortBetaPlayer) {
-        const correctPos = shortDebuffPositions['beta'];
-        const playerEl = document.getElementById(`player-${shortBetaPlayer.id}`);
+    // Validate Long Beta player position
+    if (longBetaPlayer) {
+        const correctPos = longDebuffPositions['beta'];
+        const playerEl = document.getElementById(`player-${longBetaPlayer.id}`);
         
-        if (getDistance(shortBetaPlayer.position, correctPos) < 80) {
+        if (getDistance(longBetaPlayer.position, correctPos) < 80) {
             playerEl.classList.add('correct');
         } else {
-            errors.push(`${shortBetaPlayer.name} (Short Beta) should be at ${correctPos.name}`);
+            errors.push(`${longBetaPlayer.name} (Long Beta) should be at ${correctPos.name}`);
             playerEl.classList.add('incorrect');
             isCorrect = false;
         }
     }
     
-    // Validate Short Gamma player position
-    if (shortGammaPlayer) {
-        const correctPos = shortDebuffPositions['gamma'];
-        const playerEl = document.getElementById(`player-${shortGammaPlayer.id}`);
+    // Validate Long Gamma player position
+    if (longGammaPlayer) {
+        const correctPos = longDebuffPositions['gamma'];
+        const playerEl = document.getElementById(`player-${longGammaPlayer.id}`);
         
-        if (getDistance(shortGammaPlayer.position, correctPos) < 80) {
+        if (getDistance(longGammaPlayer.position, correctPos) < 80) {
             playerEl.classList.add('correct');
         } else {
-            errors.push(`${shortGammaPlayer.name} (Short Gamma) should be at ${correctPos.name}`);
+            errors.push(`${longGammaPlayer.name} (Long Gamma) should be at ${correctPos.name}`);
             playerEl.classList.add('incorrect');
             isCorrect = false;
         }
@@ -1236,11 +1249,13 @@ function updateHints() {
                 hints = [
                     '📍 SUB-PHASE: FUSION',
                     '',
-                    'LONG debuffs collected Perfection from corners:',
-                    '   • 🔥 Fire (Alpha) • ☠️ Poison (Beta) • 🌱 Plant (Gamma)',
+                    'SHORT debuffs exploded and have Perfection:',
+                    '   • Short Alpha (α8) → 🔥 Fire Perfection',
+                    '   • Short Beta (β8) → ☠️ Poison Perfection',
+                    '   • Short Gamma (γ8) → 🌱 Plant Perfection',
                     '',
                     'FUSE Perfection buffs:',
-                    '   • Move 2 players with Perfection close together',
+                    '   • Move 2 SHORT debuff players close together',
                     '   • Click "Check Solution" to trigger fusion',
                     '   • Fusion creates Conception:',
                     '     - 🔥 + ☠️ = 💨 Winged (Wind)',
@@ -1263,8 +1278,8 @@ function updateHints() {
                 hints = [
                     '📍 SUB-PHASE: SPLICER POSITIONING',
                     '',
-                    '1. UNUSED PERFECTION claims their original corner first',
-                    '   (Long Alpha→A, Long Beta→B, Long Gamma→C)',
+                    '1. UNUSED PERFECTION (short debuff who didn\'t fuse)',
+                    '   → Returns to their original corner (A/B/C)',
                     '',
                     '2. MULTISPLICE (M2) from marker 2:',
                     '   → Go CLOCKWISE (A→B→C) to first AVAILABLE corner',
@@ -1272,12 +1287,12 @@ function updateHints() {
                     '3. SUPERSPLICE (S3) from marker 3:',
                     '   → Go COUNTERCLOCKWISE (C→B→A) to first AVAILABLE corner',
                     '',
-                    '4. TOWER SOAKERS → NW safe corner (green box)',
+                    '4. TOWER SOAKERS (fused short debuffs) → NW safe corner',
                     '',
-                    '5. SHORT DEBUFFS go to safe spots:',
-                    '   • α8 → bottom-left of top-right square',
-                    '   • β8 → top-left of bottom-right square',
-                    '   • γ8 → top-right of bottom-left square'
+                    '5. LONG DEBUFFS go to safe spots:',
+                    '   • Long Alpha → bottom-left of top-right square',
+                    '   • Long Beta → top-left of bottom-right square',
+                    '   • Long Gamma → top-right of bottom-left square'
                 ];
             }
             break;
@@ -1427,18 +1442,20 @@ function autoSolveSplicerPositioning() {
     const multisplicePlayer = gameState.players.find(p => p.debuffs[0] === 'multisplice');
     const supersplicePlayer = gameState.players.find(p => p.debuffs[0] === 'supersplice');
     const towerSoakers = gameState.players.filter(p => p.conceptionType);
-    const shortAlphaPlayer = gameState.players.find(p => p.debuffs[0] === 'alpha-short');
-    const shortBetaPlayer = gameState.players.find(p => p.debuffs[0] === 'beta-short');
-    const shortGammaPlayer = gameState.players.find(p => p.debuffs[0] === 'gamma-short');
+    const longAlphaPlayer = gameState.players.find(p => p.debuffs[0] === 'alpha-long');
+    const longBetaPlayer = gameState.players.find(p => p.debuffs[0] === 'beta-long');
+    const longGammaPlayer = gameState.players.find(p => p.debuffs[0] === 'gamma-long');
     
     // Step 1: Unused Perfection claims their corner
+    // (Short debuff players have Perfection, their original corner matches their type)
     if (unusedPerfectionPlayer) {
         const debuff = unusedPerfectionPlayer.debuffs[0];
         let corner = null;
         
-        if (debuff === 'alpha-long') corner = 'A';
-        else if (debuff === 'beta-long') corner = 'B';
-        else if (debuff === 'gamma-long') corner = 'C';
+        // Short debuff players go to their original corner
+        if (debuff === 'alpha-short') corner = 'A';
+        else if (debuff === 'beta-short') corner = 'B';
+        else if (debuff === 'gamma-short') corner = 'C';
         
         if (corner) {
             takenCorners.add(corner);
@@ -1475,15 +1492,15 @@ function autoSolveSplicerPositioning() {
         safeOffset += 30;
     });
     
-    // Step 5: Short debuffs go to their positions
-    if (shortAlphaPlayer) {
-        shortAlphaPlayer.position = { x: 450, y: 150 };
+    // Step 5: Long debuffs go to their safe positions
+    if (longAlphaPlayer) {
+        longAlphaPlayer.position = { x: 450, y: 150 };
     }
-    if (shortBetaPlayer) {
-        shortBetaPlayer.position = { x: 450, y: 450 };
+    if (longBetaPlayer) {
+        longBetaPlayer.position = { x: 450, y: 450 };
     }
-    if (shortGammaPlayer) {
-        shortGammaPlayer.position = { x: 150, y: 450 };
+    if (longGammaPlayer) {
+        longGammaPlayer.position = { x: 150, y: 450 };
     }
 }
 
