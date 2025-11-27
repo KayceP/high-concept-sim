@@ -70,6 +70,7 @@ function init() {
 function setupEventListeners() {
     document.getElementById('resetBtn').addEventListener('click', resetGame);
     document.getElementById('checkBtn').addEventListener('click', checkSolution);
+    document.getElementById('autoSolveBtn').addEventListener('click', autoSolve);
     document.getElementById('hintsBtn').addEventListener('click', toggleHints);
     document.getElementById('tutorialBtn').addEventListener('click', showTutorial);
     document.getElementById('nextPhaseBtn').addEventListener('click', nextPhase);
@@ -1303,6 +1304,193 @@ function updateHints() {
 function showTutorial() {
     const modal = document.getElementById('tutorialModal');
     modal.classList.add('show');
+}
+
+// Auto-solve the current phase
+function autoSolve() {
+    switch (gameState.phase) {
+        case 0: // Alpha Resolution
+            autoSolveAlphaResolution();
+            break;
+        case 1: // Gamma Resolution
+            autoSolveGammaResolution();
+            break;
+        case 2: // Tower Soaking
+            autoSolveTowerSoaking();
+            break;
+    }
+    
+    // Re-render players at new positions
+    renderPlayers();
+    showFeedback('✨ Auto-solved! Review the positions and click "Check Solution" to verify.', 'warning');
+}
+
+// Auto-solve Phase 0: Alpha Resolution
+function autoSolveAlphaResolution() {
+    // Define correct positions for each debuff type
+    const positions = {
+        'alpha-short': { ...WAYMARKERS.A },
+        'beta-short': { ...WAYMARKERS.B },
+        'gamma-short': { ...WAYMARKERS.C },
+        'multisplice': { ...WAYMARKERS['2'] },
+        'supersplice': { ...WAYMARKERS['3'] },
+        'alpha-long': { ...WAYMARKERS['2'] },
+        'beta-long': { ...WAYMARKERS['3'] },
+        'gamma-long': { ...WAYMARKERS['3'] }
+    };
+    
+    // Add small offsets for stacked positions to make them visible
+    let marker2Count = 0;
+    let marker3Count = 0;
+    
+    gameState.players.forEach(player => {
+        const debuff = player.debuffs[0];
+        const basePos = positions[debuff];
+        
+        if (basePos) {
+            // Add offset for stacked players
+            if (debuff === 'multisplice' || debuff === 'alpha-long') {
+                player.position = { x: basePos.x + (marker2Count * 20), y: basePos.y + (marker2Count * 20) };
+                marker2Count++;
+            } else if (debuff === 'supersplice' || debuff === 'beta-long' || debuff === 'gamma-long') {
+                player.position = { x: basePos.x + (marker3Count * 20), y: basePos.y + (marker3Count * 20) };
+                marker3Count++;
+            } else {
+                player.position = { x: basePos.x, y: basePos.y };
+            }
+        }
+    });
+}
+
+// Auto-solve Phase 1: Gamma Resolution
+function autoSolveGammaResolution() {
+    if (gameState.subPhase === 0) {
+        // Fusion sub-phase: Move the CORRECT two Perfection players together
+        // based on what tower element spawned
+        const playersWithPerfection = gameState.players.filter(p => p.perfectionType && !p.hasFused);
+        
+        if (playersWithPerfection.length >= 2 && gameState.towers.length >= 1) {
+            // Determine which Conception is needed based on tower element
+            const towerElement = gameState.towers[0].element;
+            let neededPerfections = [];
+            
+            // Tower element → required Conception → required Perfections
+            // Wind → Winged → Alpha + Beta
+            // Water → Aquatic → Alpha + Gamma
+            // Lightning → Shocking → Beta + Gamma
+            if (towerElement === TOWER_ELEMENTS.WIND) {
+                neededPerfections = ['alpha', 'beta'];
+            } else if (towerElement === TOWER_ELEMENTS.WATER) {
+                neededPerfections = ['alpha', 'gamma'];
+            } else if (towerElement === TOWER_ELEMENTS.LIGHTNING) {
+                neededPerfections = ['beta', 'gamma'];
+            }
+            
+            // Find the two players with the needed Perfection types
+            const player1 = playersWithPerfection.find(p => p.perfectionType === neededPerfections[0]);
+            const player2 = playersWithPerfection.find(p => p.perfectionType === neededPerfections[1]);
+            
+            if (player1 && player2) {
+                // Move them together to fuse
+                player1.position = { x: 270, y: 250 };
+                player2.position = { x: 290, y: 250 };
+            }
+        }
+    } else if (gameState.subPhase === 1) {
+        // Tower soak sub-phase: Move Conception players to towers
+        const playersWithConception = gameState.players.filter(p => p.conceptionType);
+        
+        if (playersWithConception.length >= 2 && gameState.towers.length >= 2) {
+            playersWithConception[0].position = { x: gameState.towers[0].x, y: gameState.towers[0].y };
+            playersWithConception[1].position = { x: gameState.towers[1].x, y: gameState.towers[1].y };
+        }
+    } else if (gameState.subPhase === 2) {
+        // Splicer positioning sub-phase
+        autoSolveSplicerPositioning();
+    }
+}
+
+// Auto-solve Splicer Positioning
+function autoSolveSplicerPositioning() {
+    const corners = {
+        'A': { ...WAYMARKERS.A },
+        'B': { ...WAYMARKERS.B },
+        'C': { ...WAYMARKERS.C }
+    };
+    
+    const clockwiseOrder = ['A', 'B', 'C'];
+    const counterclockwiseOrder = ['C', 'B', 'A'];
+    const takenCorners = new Set();
+    
+    // Get players
+    const unusedPerfectionPlayer = gameState.players.find(p => p.perfectionType && !p.hasFused);
+    const multisplicePlayer = gameState.players.find(p => p.debuffs[0] === 'multisplice');
+    const supersplicePlayer = gameState.players.find(p => p.debuffs[0] === 'supersplice');
+    const towerSoakers = gameState.players.filter(p => p.conceptionType);
+    const shortAlphaPlayer = gameState.players.find(p => p.debuffs[0] === 'alpha-short');
+    const shortBetaPlayer = gameState.players.find(p => p.debuffs[0] === 'beta-short');
+    const shortGammaPlayer = gameState.players.find(p => p.debuffs[0] === 'gamma-short');
+    
+    // Step 1: Unused Perfection claims their corner
+    if (unusedPerfectionPlayer) {
+        const debuff = unusedPerfectionPlayer.debuffs[0];
+        let corner = null;
+        
+        if (debuff === 'alpha-long') corner = 'A';
+        else if (debuff === 'beta-long') corner = 'B';
+        else if (debuff === 'gamma-long') corner = 'C';
+        
+        if (corner) {
+            takenCorners.add(corner);
+            unusedPerfectionPlayer.position = { x: corners[corner].x, y: corners[corner].y };
+        }
+    }
+    
+    // Step 2: Multisplice goes clockwise to first available
+    if (multisplicePlayer) {
+        for (const corner of clockwiseOrder) {
+            if (!takenCorners.has(corner)) {
+                takenCorners.add(corner);
+                multisplicePlayer.position = { x: corners[corner].x, y: corners[corner].y };
+                break;
+            }
+        }
+    }
+    
+    // Step 3: Supersplice goes counterclockwise to first available
+    if (supersplicePlayer) {
+        for (const corner of counterclockwiseOrder) {
+            if (!takenCorners.has(corner)) {
+                takenCorners.add(corner);
+                supersplicePlayer.position = { x: corners[corner].x, y: corners[corner].y };
+                break;
+            }
+        }
+    }
+    
+    // Step 4: Tower soakers go to NW safe corner
+    let safeOffset = 0;
+    towerSoakers.forEach(player => {
+        player.position = { x: 50 + safeOffset, y: 50 + safeOffset };
+        safeOffset += 30;
+    });
+    
+    // Step 5: Short debuffs go to their positions
+    if (shortAlphaPlayer) {
+        shortAlphaPlayer.position = { x: 450, y: 150 };
+    }
+    if (shortBetaPlayer) {
+        shortBetaPlayer.position = { x: 450, y: 450 };
+    }
+    if (shortGammaPlayer) {
+        shortGammaPlayer.position = { x: 150, y: 450 };
+    }
+}
+
+// Auto-solve Phase 2: Tower Soaking (placeholder for future)
+function autoSolveTowerSoaking() {
+    // TODO: Implement when Phase 3 mechanics are added
+    showFeedback('Phase 3 auto-solve not yet implemented', 'warning');
 }
 
 // Initialize when page loads

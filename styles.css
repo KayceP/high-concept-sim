@@ -113,6 +113,15 @@ h1 {
     background: #4a5568;
 }
 
+.btn-warning {
+    background: #d69e2e;
+    color: white;
+}
+
+.btn-warning:hover {
+    background: #b7791f;
+}
+
 .btn-small {
     padding: 8px 16px;
     font-size: 0.9em;
