@@ -516,15 +516,16 @@ function nextPhase() {
         
         // Apply phase-specific changes
         if (gameState.phase === 1) {
-            // Phase 1 (Gamma Resolution): Short debuffs exploded in Phase 0
-            // They now have Perfection buffs matching their debuff type
+            // Phase 2: Short debuffs exploded, they now have Perfection buffs
+            // Short Alpha → Alpha Perfection (Fire)
+            // Short Beta → Beta Perfection (Poison)
+            // Short Gamma → Gamma Perfection (Plant)
             
-            // Find short debuff players and assign their Perfection types
+            // Find short debuff players and assign their matching Perfection types
             const shortAlpha = gameState.players.find(p => p.debuffs[0] === 'alpha-short');
             const shortBeta = gameState.players.find(p => p.debuffs[0] === 'beta-short');
             const shortGamma = gameState.players.find(p => p.debuffs[0] === 'gamma-short');
             
-            // Short Alpha gets Alpha Perfection (Fire)
             if (shortAlpha) {
                 shortAlpha.perfectionType = 'alpha';
                 shortAlpha.needsFusion = true;
@@ -532,7 +533,6 @@ function nextPhase() {
                 shortAlpha.conceptionType = null;
             }
             
-            // Short Beta gets Beta Perfection (Poison)
             if (shortBeta) {
                 shortBeta.perfectionType = 'beta';
                 shortBeta.needsFusion = true;
@@ -540,7 +540,6 @@ function nextPhase() {
                 shortBeta.conceptionType = null;
             }
             
-            // Short Gamma gets Gamma Perfection (Plant)
             if (shortGamma) {
                 shortGamma.perfectionType = 'gamma';
                 shortGamma.needsFusion = true;
@@ -978,7 +977,7 @@ function validateSplicerPositioning(errors) {
     const takenCorners = new Set();
     
     // Step 1: Unused Perfection player claims their original corner first
-    // (Short debuff players have Perfection, their original corner matches their type)
+    // Short debuff players have Perfection, their original corner matches their type
     let unusedPerfectionCorner = null;
     if (unusedPerfectionPlayer) {
         const debuff = unusedPerfectionPlayer.debuffs[0];
@@ -1249,7 +1248,7 @@ function updateHints() {
                 hints = [
                     '📍 SUB-PHASE: FUSION',
                     '',
-                    'SHORT debuffs exploded and have Perfection:',
+                    'SHORT debuffs exploded and now have Perfection:',
                     '   • Short Alpha (α8) → 🔥 Fire Perfection',
                     '   • Short Beta (β8) → ☠️ Poison Perfection',
                     '   • Short Gamma (γ8) → 🌱 Plant Perfection',
@@ -1287,12 +1286,12 @@ function updateHints() {
                     '3. SUPERSPLICE (S3) from marker 3:',
                     '   → Go COUNTERCLOCKWISE (C→B→A) to first AVAILABLE corner',
                     '',
-                    '4. TOWER SOAKERS (fused short debuffs) → NW safe corner',
+                    '4. TOWER SOAKERS → NW safe corner (green box)',
                     '',
                     '5. LONG DEBUFFS go to safe spots:',
-                    '   • Long Alpha → bottom-left of top-right square',
-                    '   • Long Beta → top-left of bottom-right square',
-                    '   • Long Gamma → top-right of bottom-left square'
+                    '   • Long α → bottom-left of top-right square',
+                    '   • Long β → top-left of bottom-right square',
+                    '   • Long γ → top-right of bottom-left square'
                 ];
             }
             break;
@@ -1447,7 +1446,7 @@ function autoSolveSplicerPositioning() {
     const longGammaPlayer = gameState.players.find(p => p.debuffs[0] === 'gamma-long');
     
     // Step 1: Unused Perfection claims their corner
-    // (Short debuff players have Perfection, their original corner matches their type)
+    // Short debuff players have Perfection, their original corner matches their type
     if (unusedPerfectionPlayer) {
         const debuff = unusedPerfectionPlayer.debuffs[0];
         let corner = null;
