@@ -3,10 +3,13 @@
 // Game State
 let gameState = {
     phase: 0, // 0: Alpha Resolution, 1: Gamma Resolution, 2: Tower Soaking
+    subPhase: 0, // For multi-step phases: 0 = fusion, 1 = tower soak, 2 = splicer positioning
     players: [],
     towers: [],
     hintsVisible: false,
-    phaseSolved: false // Track if current phase is solved
+    phaseSolved: false, // Track if current phase is solved
+    usedPerfections: [], // Track which Perfection types were used in fusion
+    unusedPerfection: null // Track which Perfection type was NOT used
 };
 
 // Player roles and names
@@ -88,9 +91,12 @@ function setupEventListeners() {
 // Reset game and randomize debuffs
 function resetGame() {
     gameState.phase = 0;
+    gameState.subPhase = 0;
     gameState.players = [];
     gameState.towers = [];
     gameState.phaseSolved = false;
+    gameState.usedPerfections = [];
+    gameState.unusedPerfection = null;
     
     // Create players with randomized debuffs
     const debuffs = generateRandomDebuffs();
@@ -464,7 +470,15 @@ function renderPlayerList() {
 // Update phase display
 function updatePhaseDisplay() {
     const phases = ['Alpha Resolution', 'Gamma Resolution', 'Tower Soaking'];
-    document.getElementById('currentPhase').textContent = phases[gameState.phase];
+    let phaseText = phases[gameState.phase];
+    
+    // Add sub-phase info for Gamma Resolution
+    if (gameState.phase === 1) {
+        const subPhases = ['Fusion', 'Tower Soak', 'Splicer Positioning'];
+        phaseText += ` (${subPhases[gameState.subPhase]})`;
+    }
+    
+    document.getElementById('currentPhase').textContent = phaseText;
     
     // Update Next Phase button state
     const nextPhaseBtn = document.getElementById('nextPhaseBtn');
@@ -726,7 +740,16 @@ function checkPerfectionFusion() {
                     'shocking': '⚡ Shocking (Lightning)'
                 };
                 
-                showFeedback(`✨ ${player1.name} (${perfectionNames[player1.perfectionType]}) and ${player2.name} (${perfectionNames[player2.perfectionType]}) fused!\n\nCreated ${conceptionNames[conceptionType]}!`, 'success');
+                // Track which Perfections were used and which is unused
+                gameState.usedPerfections = [player1.perfectionType, player2.perfectionType];
+                const allPerfections = ['alpha', 'beta', 'gamma'];
+                gameState.unusedPerfection = allPerfections.find(p => !gameState.usedPerfections.includes(p));
+                
+                // Move to tower soak sub-phase
+                gameState.subPhase = 1;
+                updateHints();
+                
+                showFeedback(`✨ ${player1.name} (${perfectionNames[player1.perfectionType]}) and ${player2.name} (${perfectionNames[player2.perfectionType]}) fused!\n\nCreated ${conceptionNames[conceptionType]}!\n\nNow move them to soak the towers!`, 'success');
                 return;
             }
         }
@@ -801,7 +824,7 @@ function validateAlphaPositioning(errors) {
     return isCorrect;
 }
 
-// Validate Gamma Resolution phase (Phase 2)
+// Validate Gamma Resolution phase (Phase 1)
 function validateGammaPositioning(errors) {
     let isCorrect = true;
     
@@ -810,63 +833,275 @@ function validateGammaPositioning(errors) {
         return false;
     }
     
-    // In this phase:
-    // 1. Players with long debuffs collected Perfection buffs from corners
-    // 2. Two players with Perfection must fuse by standing close together
-    // 3. After fusion, they get Conception buffs
-    // 4. Only those 2 players with Conception can soak the towers
-    // 5. Tower element must match their Conception type
-    
     const playersWithPerfection = gameState.players.filter(p => p.perfectionType && !p.hasFused);
     const playersWithConception = gameState.players.filter(p => p.conceptionType);
     
-    // First check: Have players fused yet?
-    if (playersWithPerfection.length > 0 && playersWithConception.length === 0) {
-        errors.push('Players with Perfection need to fuse first! Stand two players with Perfection close together (between towers) and click Check Solution to fuse.');
+    // Sub-phase 0: Fusion
+    if (gameState.subPhase === 0) {
+        if (playersWithPerfection.length > 0 && playersWithConception.length === 0) {
+            errors.push('Players with Perfection need to fuse first!\n\nDrag two players with Perfection close together and click Check Solution.');
+            playersWithPerfection.forEach(p => {
+                const playerEl = document.getElementById(`player-${p.id}`);
+                playerEl.classList.add('incorrect');
+            });
+            return false;
+        }
         
-        // Highlight players who need to fuse
-        playersWithPerfection.forEach(p => {
-            const playerEl = document.getElementById(`player-${p.id}`);
-            playerEl.classList.add('incorrect');
-        });
-        return false;
+        if (playersWithConception.length >= 2) {
+            // Fusion already happened, move to tower soak
+            gameState.subPhase = 1;
+            updateHints();
+        }
     }
     
-    if (playersWithConception.length < 2) {
-        errors.push('Need 2 players with Conception buffs to soak towers');
-        return false;
-    }
-    
-    // Check tower soaking - each tower needs exactly 1 player with correct Conception
-    gameState.towers.forEach(tower => {
-        const playersNearTower = gameState.players.filter(player => {
-            const dist = getDistance(player.position, { x: tower.x, y: tower.y });
-            return dist < 70;
-        });
+    // Sub-phase 1: Tower Soaking
+    if (gameState.subPhase === 1) {
+        let towersSoakedCorrectly = true;
         
-        if (playersNearTower.length === 0) {
-            errors.push(`${tower.name} (${tower.element}) is not being soaked!`);
-            isCorrect = false;
-        } else if (playersNearTower.length > 1) {
-            errors.push(`${tower.name} has too many players (${playersNearTower.length})`);
-            isCorrect = false;
-        } else {
-            const player = playersNearTower[0];
-            const playerEl = document.getElementById(`player-${player.id}`);
+        gameState.towers.forEach(tower => {
+            const playersNearTower = gameState.players.filter(player => {
+                const dist = getDistance(player.position, { x: tower.x, y: tower.y });
+                return dist < 80;
+            });
             
-            // Check if player has the correct Conception buff
-            if (!player.conceptionType) {
-                errors.push(`${player.name} at ${tower.name} has no Conception buff!`);
-                playerEl.classList.add('incorrect');
-                isCorrect = false;
-            } else if (!canPlayerSoakTower(player, tower)) {
-                const conceptionName = player.conceptionType.charAt(0).toUpperCase() + player.conceptionType.slice(1);
-                errors.push(`${player.name} has ${conceptionName} Conception but ${tower.name} requires ${tower.element}!`);
-                playerEl.classList.add('incorrect');
-                isCorrect = false;
+            if (playersNearTower.length === 0) {
+                errors.push(`${tower.name} (${tower.element}) is not being soaked!`);
+                towersSoakedCorrectly = false;
+            } else if (playersNearTower.length > 1) {
+                errors.push(`${tower.name} has too many players (${playersNearTower.length})`);
+                towersSoakedCorrectly = false;
             } else {
+                const player = playersNearTower[0];
+                const playerEl = document.getElementById(`player-${player.id}`);
+                
+                if (!player.conceptionType) {
+                    errors.push(`${player.name} at ${tower.name} has no Conception buff!`);
+                    playerEl.classList.add('incorrect');
+                    towersSoakedCorrectly = false;
+                } else if (!canPlayerSoakTower(player, tower)) {
+                    const conceptionName = player.conceptionType.charAt(0).toUpperCase() + player.conceptionType.slice(1);
+                    errors.push(`${player.name} has ${conceptionName} Conception but ${tower.name} requires ${tower.element}!`);
+                    playerEl.classList.add('incorrect');
+                    towersSoakedCorrectly = false;
+                } else {
+                    playerEl.classList.add('correct');
+                }
+            }
+        });
+        
+        if (towersSoakedCorrectly) {
+                // Move to splicer positioning sub-phase
+                gameState.subPhase = 2;
+                updateHints();
+                updatePhaseDisplay();
+                
+                // Show safe corner indicator
+                const safeCorner = document.getElementById('safeCorner');
+                if (safeCorner) safeCorner.classList.add('show');
+                
+                // Show short debuff position indicators
+                const shortAlphaPos = document.getElementById('shortAlphaPos');
+                const shortBetaPos = document.getElementById('shortBetaPos');
+                const shortGammaPos = document.getElementById('shortGammaPos');
+                if (shortAlphaPos) shortAlphaPos.classList.add('show');
+                if (shortBetaPos) shortBetaPos.classList.add('show');
+                if (shortGammaPos) shortGammaPos.classList.add('show');
+                
+                showFeedback('✓ Towers soaked correctly!\n\nNow position the remaining players:\n• Unused Perfection → their corner (A/B/C)\n• Multisplice → A (clockwise)\n• Supersplice → C/4 (counterclockwise)\n• Tower soakers → NW safe corner (green box)', 'success');
+                return false; // Don't complete phase yet
+        }
+        
+        return false;
+    }
+    
+    // Sub-phase 2: Splicer Positioning
+    if (gameState.subPhase === 2) {
+        isCorrect = validateSplicerPositioning(errors);
+    }
+    
+    return isCorrect;
+}
+
+// Validate Splicer positioning after towers are soaked
+function validateSplicerPositioning(errors) {
+    let isCorrect = true;
+    
+    // Get the unused Perfection player (long debuff who didn't fuse)
+    const unusedPerfectionPlayer = gameState.players.find(p => 
+        p.perfectionType && !p.hasFused
+    );
+    
+    // Get Splicer players
+    const multisplicePlayer = gameState.players.find(p => p.debuffs[0] === 'multisplice');
+    const supersplicePlayer = gameState.players.find(p => p.debuffs[0] === 'supersplice');
+    
+    // Get tower soakers (players with Conception)
+    const towerSoakers = gameState.players.filter(p => p.conceptionType);
+    
+    // Get short debuff players
+    const shortAlphaPlayer = gameState.players.find(p => p.debuffs[0] === 'alpha-short');
+    const shortBetaPlayer = gameState.players.find(p => p.debuffs[0] === 'beta-short');
+    const shortGammaPlayer = gameState.players.find(p => p.debuffs[0] === 'gamma-short');
+    
+    // Positions for short debuff players during splicer positioning
+    const shortDebuffPositions = {
+        'alpha': { x: 450, y: 150, name: 'bottom-left of topmost right square' },
+        'beta': { x: 450, y: 450, name: 'top-left of bottommost right square' },
+        'gamma': { x: 150, y: 450, name: 'top-right of bottommost left square' }
+    };
+    
+    // Define corners in order
+    const corners = {
+        'A': WAYMARKERS.A,
+        'B': WAYMARKERS.B,
+        'C': WAYMARKERS.C
+    };
+    
+    // Clockwise order: A → B → C
+    const clockwiseOrder = ['A', 'B', 'C'];
+    // Counterclockwise order: C → B → A
+    const counterclockwiseOrder = ['C', 'B', 'A'];
+    
+    // Track which corners are taken
+    const takenCorners = new Set();
+    
+    // Step 1: Unused Perfection player claims their original corner first
+    let unusedPerfectionCorner = null;
+    if (unusedPerfectionPlayer) {
+        const debuff = unusedPerfectionPlayer.debuffs[0];
+        
+        if (debuff === 'alpha-long') {
+            unusedPerfectionCorner = 'A';
+        } else if (debuff === 'beta-long') {
+            unusedPerfectionCorner = 'B';
+        } else if (debuff === 'gamma-long') {
+            unusedPerfectionCorner = 'C';
+        }
+        
+        if (unusedPerfectionCorner) {
+            takenCorners.add(unusedPerfectionCorner);
+        }
+    }
+    
+    // Step 2: Multisplice (from marker 2) goes clockwise to first available
+    let multispliceCorner = null;
+    for (const corner of clockwiseOrder) {
+        if (!takenCorners.has(corner)) {
+            multispliceCorner = corner;
+            takenCorners.add(corner);
+            break;
+        }
+    }
+    
+    // Step 3: Supersplice (from marker 3) goes counterclockwise to first available
+    let superspliceCorner = null;
+    for (const corner of counterclockwiseOrder) {
+        if (!takenCorners.has(corner)) {
+            superspliceCorner = corner;
+            takenCorners.add(corner);
+            break;
+        }
+    }
+    
+    // Validate unused Perfection player position
+    if (unusedPerfectionPlayer && unusedPerfectionCorner) {
+        const correctCorner = corners[unusedPerfectionCorner];
+        const playerEl = document.getElementById(`player-${unusedPerfectionPlayer.id}`);
+        
+        if (isNearWaymarker(unusedPerfectionPlayer.position, correctCorner, 80)) {
+            playerEl.classList.add('correct');
+        } else {
+            errors.push(`${unusedPerfectionPlayer.name} (unused Perfection) should return to their original spot: corner ${unusedPerfectionCorner}`);
+            playerEl.classList.add('incorrect');
+            isCorrect = false;
+        }
+    }
+    
+    // Validate Multisplice position
+    if (multisplicePlayer && multispliceCorner) {
+        const correctCorner = corners[multispliceCorner];
+        const playerEl = document.getElementById(`player-${multisplicePlayer.id}`);
+        
+        if (isNearWaymarker(multisplicePlayer.position, correctCorner, 80)) {
+            playerEl.classList.add('correct');
+        } else {
+            errors.push(`${multisplicePlayer.name} (Multisplice) should go to corner ${multispliceCorner} (first available clockwise from marker 2)`);
+            playerEl.classList.add('incorrect');
+            isCorrect = false;
+        }
+    }
+    
+    // Validate Supersplice position
+    if (supersplicePlayer && superspliceCorner) {
+        const correctCorner = corners[superspliceCorner];
+        const playerEl = document.getElementById(`player-${supersplicePlayer.id}`);
+        
+        if (isNearWaymarker(supersplicePlayer.position, correctCorner, 80)) {
+            playerEl.classList.add('correct');
+        } else {
+            errors.push(`${supersplicePlayer.name} (Supersplice) should go to corner ${superspliceCorner} (first available counterclockwise from marker 3)`);
+            playerEl.classList.add('incorrect');
+            isCorrect = false;
+        }
+    }
+    
+    // Validate Short Alpha player position
+    if (shortAlphaPlayer) {
+        const correctPos = shortDebuffPositions['alpha'];
+        const playerEl = document.getElementById(`player-${shortAlphaPlayer.id}`);
+        
+        if (getDistance(shortAlphaPlayer.position, correctPos) < 80) {
+            playerEl.classList.add('correct');
+        } else {
+            errors.push(`${shortAlphaPlayer.name} (Short Alpha) should be at ${correctPos.name}`);
+            playerEl.classList.add('incorrect');
+            isCorrect = false;
+        }
+    }
+    
+    // Validate Short Beta player position
+    if (shortBetaPlayer) {
+        const correctPos = shortDebuffPositions['beta'];
+        const playerEl = document.getElementById(`player-${shortBetaPlayer.id}`);
+        
+        if (getDistance(shortBetaPlayer.position, correctPos) < 80) {
+            playerEl.classList.add('correct');
+        } else {
+            errors.push(`${shortBetaPlayer.name} (Short Beta) should be at ${correctPos.name}`);
+            playerEl.classList.add('incorrect');
+            isCorrect = false;
+        }
+    }
+    
+    // Validate Short Gamma player position
+    if (shortGammaPlayer) {
+        const correctPos = shortDebuffPositions['gamma'];
+        const playerEl = document.getElementById(`player-${shortGammaPlayer.id}`);
+        
+        if (getDistance(shortGammaPlayer.position, correctPos) < 80) {
+            playerEl.classList.add('correct');
+        } else {
+            errors.push(`${shortGammaPlayer.name} (Short Gamma) should be at ${correctPos.name}`);
+            playerEl.classList.add('incorrect');
+            isCorrect = false;
+        }
+    }
+    
+    // Validate tower soakers position (should be at safe corner NW)
+    towerSoakers.forEach(player => {
+        const playerEl = document.getElementById(`player-${player.id}`);
+        
+        // Check if they're in the NW area (top-left quadrant, away from corners A, B, C)
+        if (player.position.x < 150 && player.position.y < 150) {
+            if (!playerEl.classList.contains('correct')) {
                 playerEl.classList.add('correct');
             }
+        } else {
+            errors.push(`${player.name} (tower soaker) should move to NW safe corner to avoid explosions`);
+            if (!playerEl.classList.contains('incorrect')) {
+                playerEl.classList.add('incorrect');
+            }
+            isCorrect = false;
         }
     });
     
@@ -996,27 +1231,54 @@ function updateHints() {
             break;
             
         case 1:
-            hints = [
-                '1. LONG debuffs collected Perfection from corners',
-                '   Look for element icons on player tokens:',
-                '   • 🔥 Fire (Alpha) • ☠️ Poison (Beta) • 🌱 Plant (Gamma)',
-                '',
-                '2. FUSE Perfection buffs:',
-                '   • Move 2 players with Perfection close together (anywhere on map)',
-                '   • Drag them within ~100px of each other',
-                '   • Click "Check Solution" to trigger fusion',
-                '   • Fusion creates Conception:',
-                '     - 🔥 Fire + ☠️ Poison = 💨 Winged (Wind)',
-                '     - 🔥 Fire + 🌱 Plant = 💧 Aquatic (Water)',
-                '     - ☠️ Poison + 🌱 Plant = ⚡ Shocking (Lightning)',
-                '',
-                '3. SOAK TOWERS:',
-                '   • After fusion, move each player to a tower',
-                '   • Tower element must match Conception type',
-                '   • Wrong element = Instant wipe!',
-                '',
-                '⚠️ Must fuse BEFORE soaking towers!'
-            ];
+            if (gameState.subPhase === 0) {
+                hints = [
+                    '📍 SUB-PHASE: FUSION',
+                    '',
+                    'LONG debuffs collected Perfection from corners:',
+                    '   • 🔥 Fire (Alpha) • ☠️ Poison (Beta) • 🌱 Plant (Gamma)',
+                    '',
+                    'FUSE Perfection buffs:',
+                    '   • Move 2 players with Perfection close together',
+                    '   • Click "Check Solution" to trigger fusion',
+                    '   • Fusion creates Conception:',
+                    '     - 🔥 + ☠️ = 💨 Winged (Wind)',
+                    '     - 🔥 + 🌱 = 💧 Aquatic (Water)',
+                    '     - ☠️ + 🌱 = ⚡ Shocking (Lightning)'
+                ];
+            } else if (gameState.subPhase === 1) {
+                hints = [
+                    '📍 SUB-PHASE: TOWER SOAK',
+                    '',
+                    'Move fused players to soak towers:',
+                    '   • Each tower needs 1 player with matching Conception',
+                    '   • 💨 Winged → Wind tower',
+                    '   • 💧 Aquatic → Water tower',
+                    '   • ⚡ Shocking → Lightning tower',
+                    '',
+                    '⚠️ Wrong Conception = Instant death!'
+                ];
+            } else if (gameState.subPhase === 2) {
+                hints = [
+                    '📍 SUB-PHASE: SPLICER POSITIONING',
+                    '',
+                    '1. UNUSED PERFECTION claims their original corner first',
+                    '   (Long Alpha→A, Long Beta→B, Long Gamma→C)',
+                    '',
+                    '2. MULTISPLICE (M2) from marker 2:',
+                    '   → Go CLOCKWISE (A→B→C) to first AVAILABLE corner',
+                    '',
+                    '3. SUPERSPLICE (S3) from marker 3:',
+                    '   → Go COUNTERCLOCKWISE (C→B→A) to first AVAILABLE corner',
+                    '',
+                    '4. TOWER SOAKERS → NW safe corner (green box)',
+                    '',
+                    '5. SHORT DEBUFFS go to safe spots:',
+                    '   • α8 → bottom-left of top-right square',
+                    '   • β8 → top-left of bottom-right square',
+                    '   • γ8 → top-right of bottom-left square'
+                ];
+            }
             break;
             
         case 2:

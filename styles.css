@@ -319,6 +319,76 @@ h1 {
     transform: translateY(-50%);
 }
 
+/* Safe corner indicator */
+.safe-corner {
+    position: absolute;
+    top: 30px;
+    left: 30px;
+    width: 80px;
+    height: 80px;
+    background: rgba(72, 187, 120, 0.2);
+    border: 2px dashed #48bb78;
+    border-radius: 10px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8em;
+    font-weight: bold;
+    color: #48bb78;
+    z-index: 5;
+}
+
+.safe-corner.show {
+    display: flex;
+}
+
+/* Short debuff position indicators */
+.short-position {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px dashed;
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9em;
+    font-weight: bold;
+    z-index: 5;
+}
+
+.short-position.show {
+    display: flex;
+}
+
+/* Short Alpha position - bottom-left of top-right square */
+#shortAlphaPos {
+    top: 120px;
+    left: 420px;
+    border-color: #f56565;
+    color: #f56565;
+    background: rgba(245, 101, 101, 0.15);
+}
+
+/* Short Beta position - top-left of bottom-right square */
+#shortBetaPos {
+    top: 420px;
+    left: 420px;
+    border-color: #4299e1;
+    color: #4299e1;
+    background: rgba(66, 153, 225, 0.15);
+}
+
+/* Short Gamma position - top-right of bottom-left square */
+#shortGammaPos {
+    top: 420px;
+    left: 120px;
+    border-color: #ed8936;
+    color: #ed8936;
+    background: rgba(237, 137, 54, 0.15);
+}
+
 .boss-marker {
     position: absolute;
     top: -50px;
