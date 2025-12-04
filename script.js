@@ -647,6 +647,16 @@ function nextPhase() {
             
             gameState.subPhase = 0; // Start with fusion sub-phase
             
+            // Hide the safe zone and position indicators from previous phase
+            const safeCorner = document.getElementById('safeCorner');
+            if (safeCorner) safeCorner.classList.remove('show');
+            const shortAlphaPos = document.getElementById('shortAlphaPos');
+            const shortBetaPos = document.getElementById('shortBetaPos');
+            const shortGammaPos = document.getElementById('shortGammaPos');
+            if (shortAlphaPos) shortAlphaPos.classList.remove('show');
+            if (shortBetaPos) shortBetaPos.classList.remove('show');
+            if (shortGammaPos) shortGammaPos.classList.remove('show');
+            
             // Get players by their roles from Splicer Positioning
             const unusedPerfectionPlayer = gameState.players.find(p => p.perfectionType && !p.hasFused);
             const towerSoakers = gameState.players.filter(p => p.conceptionType);
