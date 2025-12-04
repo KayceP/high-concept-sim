@@ -468,49 +468,85 @@ h1 {
 }
 
 .debuff-icon {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.7em;
+    font-size: 0.8em;
     font-weight: bold;
-    border: 2px solid rgba(0, 0, 0, 0.5);
+    position: relative;
+}
+
+/* Default styling for non-image debuff icons */
+.debuff-icon.perfection,
+.debuff-icon.conception {
+    border: 1px solid rgba(0, 0, 0, 0.5);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
+/* Image-based debuff icons */
 .debuff-icon.alpha-short,
 .debuff-icon.alpha-long {
-    background: #f56565;
-    color: white;
-    font-size: 0.6em;
+    background: url('images/alpha.png') center/contain no-repeat;
+    background-color: transparent;
+    border: none;
 }
 
 .debuff-icon.beta-short,
 .debuff-icon.beta-long {
-    background: #4299e1;
-    color: white;
-    font-size: 0.6em;
+    background: url('images/beta.png') center/contain no-repeat;
+    background-color: transparent;
+    border: none;
 }
 
 .debuff-icon.gamma-short,
 .debuff-icon.gamma-long {
-    background: #ed8936;
-    color: white;
-    font-size: 0.6em;
+    background: url('images/gamma.png') center/contain no-repeat;
+    background-color: transparent;
+    border: none;
 }
 
 .debuff-icon.multisplice {
-    background: #9f7aea;
-    color: white;
-    font-size: 0.6em;
+    background: url('images/multisplice.png') center/contain no-repeat;
+    background-color: transparent;
+    border: none;
 }
 
 .debuff-icon.supersplice {
-    background: #38b2ac;
-    color: white;
-    font-size: 0.6em;
+    background: url('images/supersplice.png') center/contain no-repeat;
+    background-color: transparent;
+    border: none;
+}
+
+/* Timer overlay for short/long debuffs */
+.debuff-timer {
+    position: absolute;
+    bottom: -6px;
+    right: -6px;
+    background: rgba(0, 0, 0, 0.85);
+    color: #fff;
+    font-size: 0.75em;
+    font-weight: bold;
+    padding: 2px 5px;
+    border-radius: 4px;
+    min-width: 18px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    line-height: 1.2;
+}
+
+/* Short timer (8s) - more urgent color */
+.debuff-timer.short {
+    background: rgba(245, 101, 101, 0.95);
+    border-color: #f56565;
+}
+
+/* Long timer (26s) - calmer color */
+.debuff-timer.long {
+    background: rgba(66, 153, 225, 0.95);
+    border-color: #4299e1;
 }
 
 /* Towers */
@@ -569,26 +605,64 @@ h1 {
     }
 }
 
-/* Player List */
+/* Player List - Compact Mode */
 .player-list {
     background: rgba(255, 255, 255, 0.08);
-    padding: 20px;
-    border-radius: 10px;
+    padding: 12px;
+    border-radius: 8px;
     border: 2px solid #4a5568;
 }
 
 .player-list h2 {
     color: #ffd700;
-    margin-bottom: 15px;
-    font-size: 1.5em;
+    margin-bottom: 8px;
+    font-size: 1.2em;
+}
+
+/* Collapsible header */
+.collapsible-header {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.2s ease;
+}
+
+.collapsible-header:hover {
+    color: #fff;
+}
+
+.collapse-icon {
+    font-size: 0.8em;
+    transition: transform 0.3s ease;
+    display: inline-block;
+}
+
+.collapse-icon.expanded {
+    transform: rotate(90deg);
+}
+
+/* Collapsible content */
+.collapsible-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+    max-height: 1000px;
+    opacity: 1;
+}
+
+.collapsible-content.collapsed {
+    max-height: 0;
+    opacity: 0;
 }
 
 .player-info {
-    padding: 10px;
-    margin: 8px 0;
+    padding: 6px 8px;
+    margin: 4px 0;
     background: rgba(255, 255, 255, 0.05);
-    border-radius: 5px;
-    border-left: 4px solid;
+    border-radius: 4px;
+    border-left: 3px solid;
+    font-size: 0.85em;
 }
 
 .player-info.tank {
@@ -605,40 +679,57 @@ h1 {
 
 .player-info strong {
     color: #ffd700;
-    display: block;
-    margin-bottom: 5px;
+    display: inline;
+    margin-right: 8px;
+    font-size: 0.9em;
 }
 
 .player-info .debuffs {
-    display: flex;
-    gap: 5px;
+    display: inline-flex;
+    gap: 3px;
     flex-wrap: wrap;
-    margin-top: 5px;
+    vertical-align: middle;
 }
 
 .legend {
-    margin-top: 20px;
-    padding-top: 20px;
+    margin-top: 12px;
+    padding-top: 12px;
     border-top: 2px solid #4a5568;
 }
 
 .legend h3 {
     color: #ffd700;
-    margin-bottom: 10px;
-    font-size: 1.2em;
+    margin-bottom: 6px;
+    font-size: 1em;
 }
 
 .legend-item {
-    padding: 8px;
-    margin: 5px 0;
-    font-size: 0.9em;
-    line-height: 1.6;
+    padding: 4px 6px;
+    margin: 3px 0;
+    font-size: 0.8em;
+    line-height: 1.4;
 }
 
 .legend-item .debuff-icon {
     display: inline-flex;
-    margin-right: 8px;
+    margin-right: 6px;
     vertical-align: middle;
+    width: 24px;
+    height: 24px;
+}
+
+/* Compact debuff icons in player list */
+.player-info .debuff-icon {
+    width: 24px;
+    height: 24px;
+}
+
+.player-info .debuff-timer {
+    font-size: 0.6em;
+    padding: 1px 3px;
+    min-width: 14px;
+    bottom: -4px;
+    right: -4px;
 }
 
 /* Hints Display */

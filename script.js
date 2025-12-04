@@ -76,6 +76,9 @@ function setupEventListeners() {
     document.getElementById('tutorialBtn').addEventListener('click', showTutorial);
     document.getElementById('nextPhaseBtn').addEventListener('click', nextPhase);
     
+    // Collapsible player list toggle
+    document.getElementById('playerListToggle').addEventListener('click', togglePlayerList);
+    
     // Modal close
     const modal = document.getElementById('tutorialModal');
     const closeBtn = modal.querySelector('.close');
@@ -88,6 +91,15 @@ function setupEventListeners() {
             modal.classList.remove('show');
         }
     });
+}
+
+// Toggle player list visibility
+function togglePlayerList() {
+    const content = document.getElementById('playerListContent');
+    const icon = document.querySelector('#playerListToggle .collapse-icon');
+    
+    content.classList.toggle('collapsed');
+    icon.classList.toggle('expanded');
 }
 
 // Reset game and randomize debuffs
@@ -196,11 +208,25 @@ function renderPlayers() {
         const debuffsEl = document.createElement('div');
         debuffsEl.className = 'player-debuffs';
         
-        // Show initial debuff
+        // Show initial debuff with image icon and timer overlay
         player.debuffs.forEach(debuff => {
             const debuffIcon = document.createElement('span');
             debuffIcon.className = `debuff-icon ${debuff}`;
-            debuffIcon.textContent = getDebuffSymbol(debuff);
+            debuffIcon.title = getDebuffTooltip(debuff);
+            
+            // Add timer overlay for short/long debuffs
+            if (isShortDebuff(debuff)) {
+                const timer = document.createElement('span');
+                timer.className = 'debuff-timer short';
+                timer.textContent = '8';
+                debuffIcon.appendChild(timer);
+            } else if (isLongDebuff(debuff)) {
+                const timer = document.createElement('span');
+                timer.className = 'debuff-timer long';
+                timer.textContent = '26';
+                debuffIcon.appendChild(timer);
+            }
+            
             debuffsEl.appendChild(debuffIcon);
         });
         
@@ -219,7 +245,9 @@ function renderPlayers() {
             perfectionIcon.textContent = perfectionSymbols[player.perfectionType] || '⭕';
             perfectionIcon.style.background = player.perfectionType === 'alpha' ? '#f56565' : 
                                                player.perfectionType === 'beta' ? '#ecc94b' : '#ed8936';
-            perfectionIcon.style.fontSize = '0.85em';
+            perfectionIcon.style.fontSize = '0.55em';
+            perfectionIcon.style.width = '16px';
+            perfectionIcon.style.height = '16px';
             perfectionIcon.title = `Perfection ${player.perfectionType.charAt(0).toUpperCase() + player.perfectionType.slice(1)} (${perfectionSymbols[player.perfectionType]})`;
             debuffsEl.appendChild(perfectionIcon);
         }
@@ -240,6 +268,9 @@ function renderPlayers() {
             conceptionIcon.style.background = player.conceptionType === 'winged' ? '#48bb78' : 
                                                player.conceptionType === 'aquatic' ? '#4299e1' : 
                                                player.conceptionType === 'shocking' ? '#9f7aea' : '#f56565';
+            conceptionIcon.style.fontSize = '0.55em';
+            conceptionIcon.style.width = '16px';
+            conceptionIcon.style.height = '16px';
             conceptionIcon.title = `Conception: ${player.conceptionType.charAt(0).toUpperCase() + player.conceptionType.slice(1)}`;
             debuffsEl.appendChild(conceptionIcon);
         }
@@ -253,7 +284,7 @@ function renderPlayers() {
     });
 }
 
-// Get symbol for debuff
+// Get symbol for debuff (used for text displays)
 function getDebuffSymbol(debuff) {
     const symbols = {
         'alpha-short': 'α8',
@@ -266,6 +297,21 @@ function getDebuffSymbol(debuff) {
         'supersplice': 'S3'
     };
     return symbols[debuff] || '?';
+}
+
+// Get tooltip/full name for debuff
+function getDebuffTooltip(debuff) {
+    const tooltips = {
+        'alpha-short': 'Imperfection: Alpha (8s)',
+        'alpha-long': 'Imperfection: Alpha (26s)',
+        'beta-short': 'Imperfection: Beta (8s)',
+        'beta-long': 'Imperfection: Beta (26s)',
+        'gamma-short': 'Imperfection: Gamma (8s)',
+        'gamma-long': 'Imperfection: Gamma (26s)',
+        'multisplice': 'Multisplice (2-player stack)',
+        'supersplice': 'Supersplice (3-player stack)'
+    };
+    return tooltips[debuff] || debuff;
 }
 
 // Get debuff type (alpha, beta, gamma, splicer)
@@ -410,12 +456,32 @@ function renderPlayerList() {
         const debuffsEl = document.createElement('div');
         debuffsEl.className = 'debuffs';
         
-        // Show initial debuff
+        // Show initial debuff with image icon and timer overlay
         player.debuffs.forEach(debuff => {
             const debuffIcon = document.createElement('span');
             debuffIcon.className = `debuff-icon ${debuff}`;
-            debuffIcon.textContent = getDebuffSymbol(debuff);
+            debuffIcon.title = getDebuffTooltip(debuff);
+            
+            // Add timer overlay for short/long debuffs
+            if (isShortDebuff(debuff)) {
+                const timer = document.createElement('span');
+                timer.className = 'debuff-timer short';
+                timer.textContent = '8';
+                debuffIcon.appendChild(timer);
+            } else if (isLongDebuff(debuff)) {
+                const timer = document.createElement('span');
+                timer.className = 'debuff-timer long';
+                timer.textContent = '26';
+                debuffIcon.appendChild(timer);
+            }
+            
+            // Add text label next to icon
+            const debuffText = document.createElement('span');
+            debuffText.textContent = ' ' + getDebuffSymbol(debuff);
+            debuffText.style.marginRight = '8px';
+            
             debuffsEl.appendChild(debuffIcon);
+            debuffsEl.appendChild(debuffText);
         });
         
         // Show Perfection buff if player has one (but hasn't fused yet)
@@ -438,7 +504,9 @@ function renderPlayerList() {
             perfectionIcon.textContent = perfectionSymbols[player.perfectionType] || '⭕';
             perfectionIcon.style.background = player.perfectionType === 'alpha' ? '#f56565' : 
                                                player.perfectionType === 'beta' ? '#ecc94b' : '#ed8936';
-            perfectionIcon.style.fontSize = '0.85em';
+            perfectionIcon.style.fontSize = '1.1em';
+            perfectionIcon.style.width = '32px';
+            perfectionIcon.style.height = '32px';
             
             const perfectionTextNode = document.createTextNode(` ${perfectionNames[player.perfectionType]} Perfection`);
             debuffsEl.appendChild(perfectionIcon);
@@ -458,6 +526,9 @@ function renderPlayerList() {
             conceptionIcon.style.background = player.conceptionType === 'winged' ? '#48bb78' : 
                                                player.conceptionType === 'aquatic' ? '#4299e1' : 
                                                player.conceptionType === 'shocking' ? '#9f7aea' : '#f56565';
+            conceptionIcon.style.fontSize = '1.1em';
+            conceptionIcon.style.width = '32px';
+            conceptionIcon.style.height = '32px';
             
             const conceptionText = document.createTextNode(` ${player.conceptionType.charAt(0).toUpperCase() + player.conceptionType.slice(1)} Conception`);
             debuffsEl.appendChild(conceptionIcon);
@@ -472,19 +543,28 @@ function renderPlayerList() {
 
 // Update phase display
 function updatePhaseDisplay() {
-    const phases = ['Alpha Resolution', 'Gamma Resolution', 'Tower Soaking'];
-    let phaseText = phases[gameState.phase];
+    let phaseText = '';
     
-    // Add sub-phase info for Gamma Resolution
-    if (gameState.phase === 1) {
-        const subPhases = ['Fusion', 'Tower Soak', 'Splicer Positioning'];
-        phaseText += ` (${subPhases[gameState.subPhase]})`;
+    // Phase 0: First Spreads
+    if (gameState.phase === 0) {
+        phaseText = 'First Spreads';
     }
-    
-    // Add sub-phase info for Tower Soaking
-    if (gameState.phase === 2) {
-        const subPhases = ['Second Fusion', 'Four Tower Soak'];
-        phaseText += ` (${subPhases[gameState.subPhase]})`;
+    // Phase 1: Two Towers (with sub-phases)
+    else if (gameState.phase === 1) {
+        if (gameState.subPhase === 0) {
+            phaseText = 'Two Towers (Fusion)';
+        } else if (gameState.subPhase === 1) {
+            phaseText = 'Two Towers (Soak)';
+        } else if (gameState.subPhase === 2) {
+            phaseText = 'Second Spreads';
+        }
+    }
+    // Phase 2: Four Towers
+    else if (gameState.phase === 2) {
+        phaseText = 'Four Towers (Fusion)';
+        if (gameState.subPhase === 1) {
+            phaseText = 'Four Towers (Soak)';
+        }
     }
     
     document.getElementById('currentPhase').textContent = phaseText;
@@ -578,6 +658,12 @@ function nextPhase() {
             
             // Store the required Conception type (same as tower soakers have)
             gameState.requiredConception = towerSoakers[0]?.conceptionType || 'shocking';
+            
+            // Clear Conception from the original tower soakers (they're done, shouldn't soak 4 towers)
+            towerSoakers.forEach(player => {
+                player.conceptionType = null;
+                // They keep hasFused = true so they won't try to fuse again
+            });
             
             // Determine the unused Perfection type
             const unusedPerfType = unusedPerfectionPlayer?.perfectionType;
@@ -904,7 +990,11 @@ function checkSolution() {
     
     // In Phase 1 (Gamma Resolution), first check for fusion before tower validation
     if (gameState.phase === 1) {
-        checkPerfectionFusion();
+        const fusionOccurred = checkPerfectionFusion();
+        // If fusion just happened, don't continue with validation - let user see the success message
+        if (fusionOccurred) {
+            return;
+        }
     }
     
     // Validate based on current phase
@@ -935,11 +1025,15 @@ function checkSolution() {
     } else {
         gameState.phaseSolved = false;
         updatePhaseDisplay();
-        showFeedback('✗ Issues found:\n' + errors.join('\n'), 'error');
+        // Only show error if there are actual errors (not just sub-phase transitions)
+        if (errors.length > 0) {
+            showFeedback('✗ Issues found:\n' + errors.join('\n'), 'error');
+        }
     }
 }
 
 // Check if players with Perfection are close enough to fuse
+// Returns true if fusion occurred, false otherwise
 function checkPerfectionFusion() {
     const playersWithPerfection = gameState.players.filter(p => p.perfectionType && !p.hasFused);
     
@@ -987,12 +1081,14 @@ function checkPerfectionFusion() {
                 // Move to tower soak sub-phase
                 gameState.subPhase = 1;
                 updateHints();
+                updatePhaseDisplay();
                 
                 showFeedback(`✨ ${player1.name} (${perfectionNames[player1.perfectionType]}) and ${player2.name} (${perfectionNames[player2.perfectionType]}) fused!\n\nCreated ${conceptionNames[conceptionType]}!\n\nNow move them to soak the towers!`, 'success');
-                return;
+                return true; // Fusion occurred
             }
         }
     }
+    return false; // No fusion occurred
 }
 
 // Waymarker positions (600x600 arena)
@@ -1150,7 +1246,7 @@ function validateGammaPositioning(errors) {
             if (shortBetaPos) shortBetaPos.classList.add('show');
             if (shortGammaPos) shortGammaPos.classList.add('show');
             
-            showFeedback('✓ Towers soaked correctly!\n\nNow position the remaining players:\n• Unused Perfection → their corner (A/B/C)\n• Multisplice → A (clockwise)\n• Supersplice → C/4 (counterclockwise)\n• Tower soakers → NW safe corner (green box)', 'success');
+            showFeedback('✓ Towers soaked correctly! Now position the remaining players.', 'success');
             return false; // Don't complete phase yet
         }
         
@@ -1477,11 +1573,23 @@ function checkPhase2Fusion() {
     const playersWithPerfection = gameState.players.filter(p => p.perfectionType && !p.hasFused);
     const requiredPerfs = getRequiredPerfectionsForConception(gameState.requiredConception);
     
-    // Check all pairs of players with valid Perfection types
+    const perfectionNames = {
+        'alpha': '🔥 Fire',
+        'beta': '☠️ Poison',
+        'gamma': '🌱 Plant'
+    };
+    
+    let fusionMessages = [];
+    let fusedAny = false;
+    
+    // Check all pairs of players with valid Perfection types - fuse ALL valid pairs
     for (let i = 0; i < playersWithPerfection.length; i++) {
         for (let j = i + 1; j < playersWithPerfection.length; j++) {
             const player1 = playersWithPerfection[i];
             const player2 = playersWithPerfection[j];
+            
+            // Skip if either player already fused in this check
+            if (player1.hasFused || player2.hasFused) continue;
             
             // Check if both have required Perfection types (different from each other)
             const hasRequired1 = requiredPerfs.includes(player1.perfectionType);
@@ -1492,8 +1600,8 @@ function checkPhase2Fusion() {
             
             const distance = getDistance(player1.position, player2.position);
             
-            // If players are close enough, they fuse
-            if (distance < 100 && !player1.hasFused && !player2.hasFused) {
+            // If players are close enough, they fuse (125px for Phase 2 - more generous)
+            if (distance < 125) {
                 const conceptionType = getConceptionFromPerfection(player1.perfectionType, player2.perfectionType);
                 
                 player1.conceptionType = conceptionType;
@@ -1503,19 +1611,17 @@ function checkPhase2Fusion() {
                 player1.fusionPartner = player2.id;
                 player2.fusionPartner = player1.id;
                 
-                renderPlayers();
-                renderPlayerList();
-                
-                const perfectionNames = {
-                    'alpha': '🔥 Fire',
-                    'beta': '☠️ Poison',
-                    'gamma': '🌱 Plant'
-                };
-                
-                showFeedback(`✨ ${player1.name} (${perfectionNames[player1.perfectionType]}) and ${player2.name} (${perfectionNames[player2.perfectionType]}) fused!\n\nCreated ${getConceptionName(conceptionType)}!`, 'success');
-                return;
+                fusionMessages.push(`${player1.name} (${perfectionNames[player1.perfectionType]}) + ${player2.name} (${perfectionNames[player2.perfectionType]})`);
+                fusedAny = true;
             }
         }
+    }
+    
+    // Re-render and show feedback if any fusions occurred
+    if (fusedAny) {
+        renderPlayers();
+        renderPlayerList();
+        showFeedback(`✨ Fusions complete!\n\n${fusionMessages.join('\n')}\n\nCreated ${getConceptionName(gameState.requiredConception)}!`, 'success');
     }
 }
 
@@ -1907,24 +2013,24 @@ function autoSolveTowerSoaking() {
         const perfGroup2 = playersWithPerfection.filter(p => p.perfectionType === requiredPerfs[1]);
         const wrongPerfPlayers = playersWithPerfection.filter(p => p.perfectionType === wrongPerfType);
         
-        // Pair up players from different groups
+        // Pair up players from different groups - place them very close together to trigger fusion
         if (perfGroup1.length >= 1 && perfGroup2.length >= 1) {
-            // First pair
-            perfGroup1[0].position = { x: 200, y: 200 };
-            perfGroup2[0].position = { x: 220, y: 200 };
+            // First pair - place at same position with tiny offset
+            perfGroup1[0].position = { x: 200, y: 150 };
+            perfGroup2[0].position = { x: 210, y: 150 };
         }
         
         if (perfGroup1.length >= 2 && perfGroup2.length >= 2) {
-            // Second pair
-            perfGroup1[1].position = { x: 350, y: 350 };
-            perfGroup2[1].position = { x: 370, y: 350 };
+            // Second pair - place at same position with tiny offset
+            perfGroup1[1].position = { x: 350, y: 150 };
+            perfGroup2[1].position = { x: 360, y: 150 };
         }
         
-        // Move wrong Perfection players to safe spots
+        // Move wrong Perfection players to safe spots (bottom corners, away from fusion)
         let safeOffset = 0;
         wrongPerfPlayers.forEach(player => {
-            player.position = { x: 50 + safeOffset, y: 300 + safeOffset };
-            safeOffset += 40;
+            player.position = { x: 50 + safeOffset, y: 500 };
+            safeOffset += 60;
         });
         
     } else if (gameState.subPhase === 1) {
